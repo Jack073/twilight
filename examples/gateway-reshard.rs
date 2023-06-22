@@ -1,9 +1,9 @@
 use futures_util::StreamExt;
-use std::{env, sync::Arc, time::Duration};
+use std::{env, time::Duration};
 use tokio::time;
 use twilight_gateway::{
     stream::{self, ShardEventStream, ShardMessageStream},
-    Config, ConfigBuilder, Event, Intents, Shard, ShardId,
+    Config, ConfigBuilder, Intents, Shard, ShardId,
 };
 use twilight_http::Client;
 
@@ -13,31 +13,22 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let token = env::var("DISCORD_TOKEN")?;
-    let client = Arc::new(Client::new(token.clone()));
-    let config = Config::new(
-        token.clone(),
-        Intents::GUILD_MESSAGES | Intents::MESSAGE_CONTENT,
-    );
+    let client = Client::new(token.clone());
+    let config = Config::new(token, Intents::GUILDS);
     let config_callback = |_, builder: ConfigBuilder| builder.build();
 
-    let mut shards = stream::create_recommended(&client, config.clone(), &config_callback)
+    let mut shards = stream::create_recommended(&client, config.clone(), config_callback)
         .await?
         .collect::<Vec<_>>();
 
     loop {
-        // Run `gateway_runner` and `reshard` concurrently until the first one
-        // finishes.
+        // Run the two futures concurrently, returning when the first branch
+        // completes and cancels the other one.
         tokio::select! {
-            // Gateway_runner only finises on errors, so break the loop and exit
-            // the program.
-            _ = gateway_runner(Arc::clone(&client), shards) => break,
-            // Resharding complete! Time to run `gateway_runner` with the new
-            // list of shards.
-            Ok(Some(new_shards)) = reshard(&client, config.clone(), config_callback) => {
-                    // Assign the new list of shards to `shards`, dropping the
-                    // old list.
-                    shards = new_shards;
-            },
+            _ = runner(shards) => break,
+            new_shards = reshard(&client, config.clone(), config_callback) => {
+                shards = new_shards?;
+            }
         }
     }
 
@@ -46,13 +37,13 @@ async fn main() -> anyhow::Result<()> {
 
 // Instrument to differentiate between the logs produced here and in `reshard`.
 #[tracing::instrument(skip_all)]
-async fn gateway_runner(client: Arc<Client>, mut shards: Vec<Shard>) {
+async fn runner(mut shards: Vec<Shard>) {
     let mut stream = ShardEventStream::new(shards.iter_mut());
 
-    loop {
-        let event = match stream.next().await {
-            Some((_, Ok(event))) => event,
-            Some((_, Err(source))) => {
+    while let Some((shard, event)) = stream.next().await {
+        let event = match event {
+            Ok(event) => event,
+            Err(source) => {
                 tracing::warn!(?source, "error receiving event");
 
                 if source.is_fatal() {
@@ -61,73 +52,50 @@ async fn gateway_runner(client: Arc<Client>, mut shards: Vec<Shard>) {
 
                 continue;
             }
-            None => break,
         };
 
-        tokio::spawn(event_handler(Arc::clone(&client), event));
+        tracing::debug!(?event, shard = ?shard.id(), "received event");
     }
 }
 
-async fn event_handler(client: Arc<Client>, event: Event) -> anyhow::Result<()> {
-    match event {
-        Event::MessageCreate(message) if message.content == "!ping" => {
-            client
-                .create_message(message.channel_id)
-                .content("Pong!")?
-                .await?;
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
-// Instrument to differentiate between the logs produced here and
-// in `gateway_runner`.
+// Instrument to differentiate between the logs produced here and in `runner`.
 #[tracing::instrument(skip_all)]
 async fn reshard(
     client: &Client,
     config: Config,
     config_callback: impl Fn(ShardId, ConfigBuilder) -> Config,
-) -> anyhow::Result<Option<Vec<Shard>>> {
+) -> anyhow::Result<Vec<Shard>> {
+    // Reshard every eight hours. This is an arbitrary number.
     const RESHARD_DURATION: Duration = Duration::from_secs(60 * 60 * 8);
 
-    // Reshard every eight hours.
     time::sleep(RESHARD_DURATION).await;
 
     let mut shards = stream::create_recommended(client, config, config_callback)
         .await?
         .collect::<Vec<_>>();
 
-    let mut identified = vec![false; shards.len()];
-    // Don't deserialize any events (with `ShardEventStream`) as the already
-    // running shards will handle them (the events are duplicated).
+    // Before swapping the old and new list of shards, try to identify them.
+    // Don't try too hard, however, as large bots may never have all shards
+    // identified at the same time.
+    let mut identified = vec![0; shards.len()];
     let mut stream = ShardMessageStream::new(shards.iter_mut());
 
-    // Drive the new list of shards until they are all identified.
-    while !identified.iter().all(|&shard| shard) {
+    while identified.iter().sum::<usize>() < (identified.len() * 3) / 4 {
         match stream.next().await {
             Some((_, Err(source))) => {
-                tracing::warn!(?source, "error receiving event");
+                tracing::warn!(?source, "error receiving message");
 
                 if source.is_fatal() {
-                    // When returning `None` `reshard` will be called again,
-                    // retrying after `RESHARD_DURATION`.
-                    // A fatal error will however most likely also be
-                    // encountered for the currently running list of shards at
-                    // the same time, exciting the application.
-                    return Ok(None);
+                    anyhow::bail!(source);
                 }
-
-                continue;
             }
             Some((shard, _)) => {
-                identified[shard.id().number() as usize] = shard.status().is_identified();
+                identified[shard.id().number() as usize] = shard.status().is_identified().into();
             }
-            None => return Ok(None),
+            _ => {}
         }
     }
 
     drop(stream);
-    Ok(Some(shards))
+    Ok(shards)
 }
