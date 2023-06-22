@@ -1017,27 +1017,8 @@ impl Shard {
                     _ => {}
                 }
 
-                // READY *should* be the first received dispatch event (which
-                // initializes `self.session`), but it shouldn't matter that
-                // much if it's not.
                 if let Some(session) = self.session.as_mut() {
-                    let last_sequence = session.set_sequence(sequence);
-
-                    // If a sequence has been skipped then we may have missed a
-                    // message and should cause a reconnect so we can attempt to get
-                    // that message again.
-                    if sequence > last_sequence + 1 {
-                        tracing::info!(
-                            missed_events = sequence - (last_sequence + 1),
-                            "dispatch events have been missed",
-                        );
-                        self.session = self
-                            .close(CloseFrame::RESUME)
-                            .await
-                            .map_err(ProcessError::from_send)?;
-                    }
-                } else {
-                    tracing::info!("unable to store sequence");
+                    session.set_sequence(sequence);
                 }
             }
             Some(OpCode::Heartbeat) => {
