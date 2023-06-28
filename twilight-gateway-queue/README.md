@@ -1,42 +1,22 @@
 # twilight-gateway-queue
 
-Ratelimiting functionality for queueing new gateway sessions.
+Rate limiting functionality for gateway `IDENTIFY` commands.
 
-The gateway ratelimits how often clients can initialize new sessions.
-Instances of a queue are given to shards so that they can request to
-initialize a session.
+Discord allows bot's shards to send a limited amount of `IDENTIFY` commands
+every 5 seconds, with a daily limit from 1000 to 2000 commands, and invalidates
+*all* shard sessions upon exceeding it. Each identify interval may be filled by
+shards' IDs modulo `max_concurrency` and such a set of shards is called a
+bucket. See [Discord Docs/Sharding].
 
-Queue implementations must point to the same broker so that all shards
-across all shard groups, processes, and other forms of multi-serviced
-applications, can work together and use the same ratelimiting source. That is,
-if two shard groups are in two different processes, then the the two processes
-must use some unified form of ratelimiting: this can either mean using IPC to
-communicate ratelimiting or a broker.
+To coordinate this, a [`Queue`] should process each identify request and shards
+should wait for its signal to proceed before continuing and otherwise retry. The
+provided [`InMemoryQueue`] never fails or cancels requests and is therefore a
+good starting point for custom implementations. For most cases, simply wrapping
+[`InMemoryQueue`] is be enough to add new capabilities such as multi-process
+support, see [`gateway-queue`] and [`gateway-queue-http`] for a HTTP server and
+client implementation, respectively. Integration tests can be found
+[here](https://github.com/twilight-rs/twilight/blob/main/twilight-gateway-queue/tests/queue.rs).
 
-## Provided queues
-
-Most users only need the [`LocalQueue`]: it's a single-process queue for
-smaller bots. Larger bots need the [`LargeBotQueue`], which supports
-single-process [Sharding for Large Bots] through the use of bucket
-releasing.
-
-By default, the gateway's `stream` module and `Shard`s use the [`LocalQueue`].
-This can be overridden via the `ShardBuilder::queue` configuration method.
-
-## Advanced use cases
-
-Large bots, and smaller bots out of design, may need to implement their own
-queue. The most common reason to need this is if you have shard groups in
-multiple processes. A broker to manage ratelimiting across shard groups is
-required, so a [`Queue`] trait is provided that shards can use to make requests
-to create sessions.
-
-## Features
-
-### Twilight-HTTP
-
-The `twilight-http` feature brings in support for [`LargeBotQueue`].
-
-This is enabled by default.
-
-[Sharding for Large Bots]: https://discord.com/developers/docs/topics/gateway#sharding-for-large-bots
+[Discord Docs/Sharding]: https://discord.com/developers/docs/topics/gateway#sharding
+[`gateway-queue`]: https://github.com/twilight-rs/gateway-queue
+[`gateway-queue-http`]: https://github.com/twilight-rs/twilight/blob/main/examples/gateway-queue-http.rs

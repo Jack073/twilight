@@ -1,11 +1,14 @@
 //! User configuration for shards.
 
-use crate::{tls::TlsContainer, EventTypeFlags, Session};
+use crate::{
+    queue::{InMemoryQueue, Queue},
+    tls::TlsContainer,
+    EventTypeFlags, Session,
+};
 use std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     sync::Arc,
 };
-use twilight_gateway_queue::{LocalQueue, Queue};
 use twilight_model::gateway::{
     payload::outgoing::{identify::IdentifyProperties, update_presence::UpdatePresencePayload},
     Intents,
@@ -190,7 +193,7 @@ impl ConfigBuilder {
                 large_threshold: 50,
                 presence: None,
                 proxy_url: None,
-                queue: Arc::new(LocalQueue::new()),
+                queue: Arc::new(InMemoryQueue::default()),
                 ratelimit_messages: true,
                 session: None,
                 tls: TlsContainer::new().unwrap(),
@@ -348,11 +351,8 @@ impl ConfigBuilder {
 
     /// Set the queue to use for queueing shard sessions.
     ///
-    /// Defaults to a [`LocalQueue`].
-    ///
-    /// Refer to the [`queue`] module for more information.
-    ///
-    /// [`queue`]: crate::queue
+    /// Defaults to [`InMemoryQueue`] with its default settings.
+    #[allow(clippy::missing_const_for_fn)]
     pub fn queue(mut self, queue: Arc<dyn Queue>) -> Self {
         self.inner.queue = queue;
 
