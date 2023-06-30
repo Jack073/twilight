@@ -128,6 +128,7 @@ async fn runner(
             }
             _ = &mut interval, if queues.iter().any(|queue| !queue.is_empty()) => {
                 let now = Instant::now();
+                let span = tracing::info_span!("bucket", ?now);
                 interval.as_mut().reset(now + IDENTIFY_INTERVAL);
                 for (rate_limit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
@@ -145,6 +146,7 @@ async fn runner(
                             continue;
                         }
                         _ = tx.send(());
+                        tracing::trace!(parent: &span, rate_limit_key, "allowing shard {id}");
                         // Give the shard a chance to identify before continuing.
                         // Shards *must* identify in order.
                         yield_now().await;
