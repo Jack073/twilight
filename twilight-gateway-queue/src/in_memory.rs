@@ -1,3 +1,5 @@
+//! Memory based [`Queue`] implementation and supporting items.
+
 use super::{Queue, IDENTIFY_INTERVAL};
 use std::{collections::VecDeque, fmt::Debug, iter};
 use tokio::{
@@ -124,7 +126,7 @@ async fn runner(
     }
 }
 
-/// Memory based [`Queue`] backed by an efficient background task.
+/// Memory based [`Queue`] implementation backed by an efficient background task.
 ///
 /// [`InMemoryQueue::update`] allows for dynamically changing the queue's
 /// settings.

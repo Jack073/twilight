@@ -6,7 +6,7 @@
     missing_docs,
     unsafe_code
 )]
-#![allow(clippy::must_use_candidate)]
+#![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 
 mod in_memory;
 
