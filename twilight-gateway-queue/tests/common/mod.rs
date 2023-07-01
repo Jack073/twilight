@@ -25,11 +25,12 @@ pub async fn different_id_is_parallel(queue: impl Queue) {
     let mut t2 = queue.enqueue(1);
 
     tokio::select! {
+        biased;
+        _ = poll_fn(|cx| Pin::new(&mut t2).poll(cx)) => panic!("not started in order"),
         _ = poll_fn(|cx| Pin::new(&mut t1).poll(cx)) => {
             _ = poll_fn(|cx| Pin::new(&mut t2).poll(cx)).await;
             assert!(now.elapsed() < IDENTIFY_INTERVAL, "ran serially");
         }
-        _ = poll_fn(|cx| Pin::new(&mut t2).poll(cx)) => panic!("not started in order"),
     }
 }
 
