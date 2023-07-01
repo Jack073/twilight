@@ -1,5 +1,7 @@
 # twilight-gateway-queue
 
+[![codecov badge][]][codecov link] [![discord badge][]][discord link] [![github badge][]][github link] [![license badge][]][license link] ![rust badge]
+
 Rate limiting functionality for gateway `IDENTIFY` commands.
 
 Discord allows bot's shards to send a limited amount of `IDENTIFY` commands
@@ -17,6 +19,15 @@ support, see [`gateway-queue`] and [`gateway-queue-http`] for a HTTP server and
 client implementation, respectively. Integration tests can be found
 [here](https://github.com/twilight-rs/twilight/blob/main/twilight-gateway-queue/tests/common/mod.rs).
 
+[codecov badge]: https://img.shields.io/codecov/c/gh/twilight-rs/twilight?logo=codecov&style=for-the-badge&token=E9ERLJL0L2
+[codecov link]: https://app.codecov.io/gh/twilight-rs/twilight/
+[discord badge]: https://img.shields.io/discord/745809834183753828?color=%237289DA&label=discord%20server&logo=discord&style=for-the-badge
 [Discord Docs/Sharding]: https://discord.com/developers/docs/topics/gateway#sharding
+[discord link]: https://discord.gg/twilight-rs
 [`gateway-queue`]: https://github.com/twilight-rs/gateway-queue
 [`gateway-queue-http`]: https://github.com/twilight-rs/twilight/blob/main/examples/gateway-queue-http.rs
+[github badge]: https://img.shields.io/badge/github-twilight-6f42c1.svg?style=for-the-badge&logo=github
+[github link]: https://github.com/twilight-rs/twilight
+[license badge]: https://img.shields.io/badge/license-ISC-blue.svg?style=for-the-badge&logo=pastebin
+[license link]: https://github.com/twilight-rs/twilight/blob/main/LICENSE.md
+[rust badge]: https://img.shields.io/badge/rust-1.67+-93450a.svg?style=for-the-badge&logo=rust
