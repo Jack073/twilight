@@ -128,7 +128,7 @@ async fn runner(
             }
             _ = &mut interval, if queues.iter().any(|queue| !queue.is_empty()) => {
                 let now = Instant::now();
-                let span = tracing::info_span!("bucket", ?now);
+                let span = tracing::info_span!("bucket", capacity = %queues.len(), ?now);
                 interval.as_mut().reset(now + IDENTIFY_INTERVAL);
                 for (rate_limit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
