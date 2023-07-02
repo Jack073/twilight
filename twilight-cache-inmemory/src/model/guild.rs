@@ -3,8 +3,9 @@ use std::slice::Iter;
 use serde::Serialize;
 use twilight_model::{
     guild::{
-        AfkTimeout, DefaultMessageNotificationLevel, ExplicitContentFilter, GuildFeature, MfaLevel,
-        NSFWLevel, Permissions, PremiumTier, SystemChannelFlags, VerificationLevel,
+        scheduled_event::GuildScheduledEvent, AfkTimeout, DefaultMessageNotificationLevel,
+        ExplicitContentFilter, GuildFeature, MfaLevel, NSFWLevel, Permissions, PremiumTier,
+        SystemChannelFlags, VerificationLevel,
     },
     id::{
         marker::{ApplicationMarker, ChannelMarker, GuildMarker, UserMarker},
@@ -27,6 +28,7 @@ pub struct CachedGuild {
     pub(crate) discovery_splash: Option<ImageHash>,
     pub(crate) explicit_content_filter: ExplicitContentFilter,
     pub(crate) features: Vec<GuildFeature>,
+    pub(crate) guild_scheduled_events: Vec<GuildScheduledEvent>,
     pub(crate) icon: Option<ImageHash>,
     pub(crate) id: Id<GuildMarker>,
     pub(crate) joined_at: Option<Timestamp>,
@@ -114,6 +116,11 @@ impl CachedGuild {
         Features {
             inner: self.features.iter(),
         }
+    }
+
+    /// Scheduled guild events.
+    pub fn guild_scheduled_events(&self) -> &[GuildScheduledEvent] {
+        &self.guild_scheduled_events
     }
 
     /// Icon hash.

@@ -93,6 +93,9 @@ pub struct Guild {
     pub explicit_content_filter: ExplicitContentFilter,
     /// Enabled guild features
     pub features: Vec<GuildFeature>,
+    /// Scheduled guild events.
+    #[serde(default)]
+    pub guild_scheduled_events: Vec<scheduled_event::GuildScheduledEvent>,
     pub icon: Option<ImageHash>,
     pub id: Id<GuildMarker>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -173,6 +176,7 @@ impl<'de> Deserialize<'de> for Guild {
             Emojis,
             ExplicitContentFilter,
             Features,
+            GuildScheduledEvents,
             Icon,
             Id,
             JoinedAt,
@@ -235,6 +239,7 @@ impl<'de> Deserialize<'de> for Guild {
                 let mut emojis = None;
                 let mut explicit_content_filter = None;
                 let mut features = None;
+                let mut guild_scheduled_events = None;
                 let mut icon = None::<Option<_>>;
                 let mut id = None;
                 let mut joined_at = None::<Option<_>>;
@@ -389,6 +394,13 @@ impl<'de> Deserialize<'de> for Guild {
                             }
 
                             features = Some(map.next_value()?);
+                        }
+                        Field::GuildScheduledEvents => {
+                            if guild_scheduled_events.is_some() {
+                                return Err(DeError::duplicate_field("guild_scheduled_events"));
+                            }
+
+                            guild_scheduled_events = Some(map.next_value()?);
                         }
                         Field::Icon => {
                             if icon.is_some() {
@@ -679,6 +691,7 @@ impl<'de> Deserialize<'de> for Guild {
                 let description = description.unwrap_or_default();
                 let discovery_splash = discovery_splash.unwrap_or_default();
                 let emojis = emojis.unwrap_or_default();
+                let guild_scheduled_events = guild_scheduled_events.unwrap_or_default();
                 let icon = icon.unwrap_or_default();
                 let large = large.unwrap_or_default();
                 let joined_at = joined_at.unwrap_or_default();
@@ -720,6 +733,7 @@ impl<'de> Deserialize<'de> for Guild {
                     ?discovery_splash,
                     ?emojis,
                     ?explicit_content_filter,
+                    ?guild_scheduled_events,
                     ?features,
                     ?icon,
                     %id,
@@ -736,11 +750,11 @@ impl<'de> Deserialize<'de> for Guild {
                     ?owner,
                     ?permissions,
                     ?preferred_locale,
-                    ?premium_progress_bar_enabled,
                 );
 
                 // Split in two due to generic impl only going up to 32.
                 tracing::trace!(
+                    ?premium_progress_bar_enabled,
                     ?premium_subscription_count,
                     ?premium_tier,
                     ?presences,
@@ -792,6 +806,7 @@ impl<'de> Deserialize<'de> for Guild {
                     emojis,
                     explicit_content_filter,
                     features,
+                    guild_scheduled_events,
                     icon,
                     id,
                     joined_at,
@@ -918,6 +933,7 @@ mod tests {
             emojis: Vec::new(),
             explicit_content_filter: ExplicitContentFilter::MembersWithoutRole,
             features: Vec::from([GuildFeature::Banner]),
+            guild_scheduled_events: Vec::new(),
             icon: Some(image_hash::ICON),
             id: Id::new(1),
             joined_at: Some(joined_at),
