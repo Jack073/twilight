@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use tokio::{sync::oneshot, time::Duration};
 
 /// Period between buckets.
-pub const IDENTIFY_INTERVAL: Duration = Duration::from_secs(5);
+pub const IDENTIFY_DELAY: Duration = Duration::from_secs(5);
 
 /// Abstraction for types processing gateway identify requests.
 ///

@@ -1,6 +1,6 @@
 //! Memory based [`Queue`] implementation and supporting items.
 
-use super::{Queue, IDENTIFY_INTERVAL};
+use super::{Queue, IDENTIFY_DELAY};
 use std::{collections::VecDeque, fmt::Debug, iter};
 use tokio::{
     sync::{mpsc, oneshot},
@@ -105,7 +105,7 @@ async fn runner(
             _ = &mut interval, if queues.iter().any(|queue| !queue.is_empty()) => {
                 let now = Instant::now();
                 let span = tracing::info_span!("bucket", capacity = %queues.len(), ?now);
-                interval.as_mut().reset(now + IDENTIFY_INTERVAL);
+                interval.as_mut().reset(now + IDENTIFY_DELAY);
                 for (rate_limit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
                         (&mut reset_at).await;
