@@ -195,7 +195,9 @@ impl InMemoryQueue {
 }
 
 impl Default for InMemoryQueue {
-    /// Creates a new queue with the default settings of:
+    /// Creates a new `InMemoryQueue` with Discord's default settings.
+    ///
+    /// Currently these are:
     ///
     /// * `max_concurrency`: 1
     /// * `remaining`: 1000
