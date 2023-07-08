@@ -61,7 +61,7 @@ async fn runner(
     };
     let mut queues = create_queues(max_concurrency);
 
-    'outer: loop {
+    loop {
         tokio::select! {
             biased;
             _ = &mut reset_at => {
@@ -111,7 +111,7 @@ async fn runner(
                         let previous = reset_at.deadline();
                         reset_at.as_mut().reset(previous + LIMIT_PERIOD);
 
-                        continue 'outer;
+                        break;
                     }
                     while let Some((id, tx)) = queue.pop_front() {
                         let calculated_rate_limit_key = (id % u32::from(max_concurrency)) as usize;
