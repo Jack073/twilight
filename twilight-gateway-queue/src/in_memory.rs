@@ -182,6 +182,9 @@ impl InMemoryQueue {
     ///
     /// ```no_run
     /// # use twilight_gateway_queue::InMemoryQueue;
+    /// # struct GetGatewayBot {
+    /// #     session_start_limit: SessionStartLimit,
+    /// # }
     /// # struct SessionStartLimit {
     /// #     max_concurrency: u8,
     /// #     remaining: u16,
@@ -194,13 +197,13 @@ impl InMemoryQueue {
     /// #     .unwrap();
     /// use std::time::Duration;
     ///
-    /// async fn get_gateway_bot() -> SessionStartLimit {
+    /// async fn get_gateway_bot() -> GetGatewayBot {
     ///     unimplemented!()
     /// }
     ///
     /// # rt.block_on(async {
     /// # let queue = InMemoryQueue::default();
-    /// let session = get_gateway_bot().await;
+    /// let session = get_gateway_bot().await.session_start_limit;
     /// queue.update(
     ///     session.max_concurrency,
     ///     session.remaining,
