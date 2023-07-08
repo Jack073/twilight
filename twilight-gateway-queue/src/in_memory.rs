@@ -66,7 +66,8 @@ async fn runner(
             biased;
             _ = &mut reset_at => {
                 remaining = total;
-                reset_at.as_mut().reset(Instant::now() + Duration::from_secs(60 * 60 * 24));
+                let previous = reset_at.deadline();
+                reset_at.as_mut().reset(previous + Duration::from_secs(60 * 60 * 24));
             }
             message = rx.recv() => {
                 match message {
@@ -101,7 +102,8 @@ async fn runner(
                     if remaining == 0 {
                         (&mut reset_at).await;
                         remaining = total;
-                        reset_at.as_mut().reset(now + Duration::from_secs(60 * 60 * 24));
+                        let previous = reset_at.deadline();
+                        reset_at.as_mut().reset(previous + Duration::from_secs(60 * 60 * 24));
 
                         continue 'outer;
                     }
