@@ -18,7 +18,8 @@ use tokio::{sync::oneshot, time::Duration};
 /// Period between buckets.
 pub const IDENTIFY_DELAY: Duration = Duration::from_secs(5);
 
-/// Duration from the first identify until `remaining` resets to `total`.
+/// Duration from the first identify until the remaining count resets to the
+/// total count.
 pub const LIMIT_PERIOD: Duration = Duration::from_secs(60 * 60 * 24);
 
 /// Abstraction for types processing gateway identify requests.
