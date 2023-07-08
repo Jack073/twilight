@@ -178,6 +178,38 @@ impl InMemoryQueue {
     ///
     /// May be regularly called as the bot joins/leaves guilds.
     ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use twilight_gateway_queue::InMemoryQueue;
+    /// # struct SessionStartLimit {
+    /// #     max_concurrency: u8,
+    /// #     remaining: u16,
+    /// #     reset_after: u64,
+    /// #     total: u16,
+    /// # }
+    /// # let rt = tokio::runtime::Builder::new_current_thread()
+    /// #     .enable_time()
+    /// #     .build()
+    /// #     .unwrap();
+    /// use std::time::Duration;
+    ///
+    /// async fn get_gateway_bot() -> SessionStartLimit {
+    ///     unimplemented!()
+    /// }
+    ///
+    /// # rt.block_on(async {
+    /// # let queue = InMemoryQueue::default();
+    /// let session = get_gateway_bot().await;
+    /// queue.update(
+    ///     session.max_concurrency,
+    ///     session.remaining,
+    ///     Duration::from_millis(session.reset_after),
+    ///     session.total,
+    /// );
+    /// # })
+    /// ```
+    ///
     /// [Get Gateway Bot]: https://discord.com/developers/docs/topics/gateway#get-gateway-bot
     pub fn update(&self, max_concurrency: u8, remaining: u16, reset_after: Duration, total: u16) {
         self.tx
