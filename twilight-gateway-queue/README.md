@@ -13,11 +13,9 @@ bucket. See [Discord Docs/Sharding].
 To coordinate this, a [`Queue`] should process each identify request and shards
 should wait for its signal to proceed before continuing and otherwise retry. The
 provided [`InMemoryQueue`] never fails or cancels requests and is therefore a
-good starting point for custom implementations. For most cases, simply wrapping
-[`InMemoryQueue`] is be enough to add new capabilities such as multi-process
-support, see [`gateway-queue`] and [`gateway-queue-http`] for a HTTP server and
-client implementation, respectively. Integration tests can be found
-[here](https://github.com/twilight-rs/twilight/blob/main/twilight-gateway-queue/tests/common/mod.rs).
+good starting point for custom implementations. It can also be composed to
+support multiple processes; see [`gateway-queue-http`] and [`gateway-queue`] for
+a HTTP client and server implementation, respectively.
 
 [codecov badge]: https://img.shields.io/codecov/c/gh/twilight-rs/twilight?logo=codecov&style=for-the-badge&token=E9ERLJL0L2
 [codecov link]: https://app.codecov.io/gh/twilight-rs/twilight/
