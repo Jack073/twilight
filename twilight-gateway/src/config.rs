@@ -352,6 +352,9 @@ impl ConfigBuilder {
     /// Set the queue to use for queueing shard sessions.
     ///
     /// Defaults to [`InMemoryQueue`] with its default settings.
+    ///
+    /// Note that [`InMemoryQueue`] with a `max_concurrency` of `0` effectively
+    /// turns itself into a no-op.
     #[allow(clippy::missing_const_for_fn)]
     pub fn queue(mut self, queue: Arc<dyn Queue>) -> Self {
         self.inner.queue = queue;
