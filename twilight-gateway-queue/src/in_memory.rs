@@ -1,6 +1,6 @@
 //! Memory based [`Queue`] implementation and supporting items.
 
-use super::{Queue, IDENTIFY_DELAY};
+use super::{Queue, IDENTIFY_DELAY, LIMIT_PERIOD};
 use std::{collections::VecDeque, fmt::Debug, iter};
 use tokio::{
     sync::{mpsc, oneshot},
@@ -67,9 +67,7 @@ async fn runner(
             _ = &mut reset_at => {
                 remaining = total;
                 let previous = reset_at.deadline();
-                reset_at
-                    .as_mut()
-                    .reset(previous + Duration::from_secs(60 * 60 * 24));
+                reset_at.as_mut().reset(previous + LIMIT_PERIOD);
             }
             message = rx.recv() => {
                 match message {
@@ -111,9 +109,7 @@ async fn runner(
                         (&mut reset_at).await;
                         remaining = total;
                         let previous = reset_at.deadline();
-                        reset_at
-                            .as_mut()
-                            .reset(previous + Duration::from_secs(60 * 60 * 24));
+                        reset_at.as_mut().reset(previous + LIMIT_PERIOD);
 
                         continue 'outer;
                     }
@@ -147,7 +143,8 @@ async fn runner(
 ///
 /// # Settings
 ///
-/// `remaining` is reset to `total` after `reset_after` and then every 24 hours.
+/// `remaining` is reset to `total` after `reset_after` and then every
+/// [`LIMIT_PERIOD`].
 ///
 /// A `max_concurrency` of `0` processes all requests instantly, effectively
 /// disabling the queue.
@@ -201,10 +198,10 @@ impl Default for InMemoryQueue {
     ///
     /// * `max_concurrency`: 1
     /// * `remaining`: 1000
-    /// * `reset_after`: 24 hours
+    /// * `reset_after`: [`LIMIT_PERIOD`]
     /// * `total`: 1000.
     fn default() -> Self {
-        Self::new(1, 1000, Duration::from_secs(60 * 60 * 24), 1000)
+        Self::new(1, 1000, LIMIT_PERIOD, 1000)
     }
 }
 
