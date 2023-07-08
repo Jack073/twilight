@@ -67,11 +67,13 @@ async fn runner(
             _ = &mut reset_at => {
                 remaining = total;
                 let previous = reset_at.deadline();
-                reset_at.as_mut().reset(previous + Duration::from_secs(60 * 60 * 24));
+                reset_at
+                    .as_mut()
+                    .reset(previous + Duration::from_secs(60 * 60 * 24));
             }
             message = rx.recv() => {
                 match message {
-                    Some(Message::Request{shard, tx}) => {
+                    Some(Message::Request { shard, tx }) => {
                         if max_concurrency == 0 {
                             _ = tx.send(());
                         } else {
@@ -80,13 +82,19 @@ async fn runner(
                     }
                     Some(Message::Update(update)) => {
                         let deadline;
-                        Settings {max_concurrency, remaining, reset_at: deadline, total} = update;
+                        Settings {
+                            max_concurrency,
+                            remaining,
+                            reset_at: deadline,
+                            total,
+                        } = update;
 
                         if queues.len() != max_concurrency as usize {
                             let unbalanced = queues.into_iter().flatten();
                             queues = create_queues(max_concurrency);
                             for (shard, tx) in unbalanced {
-                                queues[(shard % u32::from(max_concurrency)) as usize].push_back((shard, tx));
+                                queues[(shard % u32::from(max_concurrency)) as usize]
+                                    .push_back((shard, tx));
                             }
                         }
                         reset_at.as_mut().reset(deadline);
@@ -103,7 +111,9 @@ async fn runner(
                         (&mut reset_at).await;
                         remaining = total;
                         let previous = reset_at.deadline();
-                        reset_at.as_mut().reset(previous + Duration::from_secs(60 * 60 * 24));
+                        reset_at
+                            .as_mut()
+                            .reset(previous + Duration::from_secs(60 * 60 * 24));
 
                         continue 'outer;
                     }
