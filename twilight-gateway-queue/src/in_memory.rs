@@ -158,7 +158,12 @@ pub struct InMemoryQueue {
 
 impl InMemoryQueue {
     /// Creates a new `InMemoryQueue` with custom settings.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `total` < `remaining`.
     pub fn new(max_concurrency: u8, remaining: u16, reset_after: Duration, total: u16) -> Self {
+        assert!(total >= remaining);
         let (tx, rx) = mpsc::unbounded_channel();
 
         tokio::spawn(runner(
@@ -213,8 +218,13 @@ impl InMemoryQueue {
     /// # })
     /// ```
     ///
+    /// # Panics
+    ///
+    /// Panics if `total` < `remaining`.
+    ///
     /// [Get Gateway Bot]: https://discord.com/developers/docs/topics/gateway#get-gateway-bot
     pub fn update(&self, max_concurrency: u8, remaining: u16, reset_after: Duration, total: u16) {
+        assert!(total >= remaining);
         self.tx
             .send(Message::Update(Settings {
                 max_concurrency,
