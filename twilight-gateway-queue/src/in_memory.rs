@@ -141,14 +141,8 @@ async fn runner(
 ///
 /// Cloning the queue is cheap and just increments a reference counter.
 ///
-/// # Settings
-///
-/// `remaining` resets to `total` after `reset_after` and then every
-/// [`LIMIT_PERIOD`] unless `remaining` != `total` in which case `reset_after`
-/// is ignored.
-///
-/// A `max_concurrency` of `0` processes all requests instantly, effectively
-/// disabling the queue.
+/// **Note:** A `max_concurrency` of `0` processes all requests instantly,
+/// effectively disabling the queue.
 #[derive(Clone, Debug)]
 pub struct InMemoryQueue {
     /// Sender to communicate with the background [task runner].
