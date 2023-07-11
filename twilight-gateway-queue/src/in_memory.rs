@@ -100,13 +100,13 @@ async fn runner(
                 }
             }
             _ = &mut interval, if queues.iter().any(|queue| !queue.is_empty()) => {
+                let span = tracing::info_span!("bucket", capacity = %queues.len());
                 let now = Instant::now();
-                let span = tracing::info_span!("bucket", capacity = %queues.len(), ?now);
                 interval.as_mut().reset(now + IDENTIFY_DELAY);
                 if remaining == total {
                     reset_at.as_mut().reset(now + LIMIT_PERIOD);
                 }
-                for (rate_limit_key, queue) in queues.iter_mut().enumerate() {
+                for (ratelimit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
                         (&mut reset_at).await;
                         remaining = total;
@@ -114,14 +114,14 @@ async fn runner(
                         break;
                     }
                     while let Some((id, tx)) = queue.pop_front() {
-                        let calculated_rate_limit_key = (id % u32::from(max_concurrency)) as usize;
-                        debug_assert_eq!(rate_limit_key, calculated_rate_limit_key);
+                        let calculated_ratelimit_key = (id % u32::from(max_concurrency)) as usize;
+                        debug_assert_eq!(ratelimit_key, calculated_ratelimit_key);
 
                         if tx.is_closed() {
                             continue;
                         }
                         _ = tx.send(());
-                        tracing::trace!(parent: &span, rate_limit_key, "allowing shard {id}");
+                        tracing::debug!(parent: &span, ratelimit_key, "allowing shard {id}");
                         // Give the shard a chance to identify before continuing.
                         // Shards *must* identify in order.
                         yield_now().await;
@@ -220,6 +220,7 @@ impl InMemoryQueue {
     /// [Get Gateway Bot]: https://discord.com/developers/docs/topics/gateway#get-gateway-bot
     pub fn update(&self, max_concurrency: u8, remaining: u16, reset_after: Duration, total: u16) {
         assert!(total >= remaining);
+
         self.tx
             .send(Message::Update(Settings {
                 max_concurrency,
@@ -248,6 +249,7 @@ impl Default for InMemoryQueue {
 impl Queue for InMemoryQueue {
     fn enqueue(&self, shard: u32) -> oneshot::Receiver<()> {
         let (tx, rx) = oneshot::channel();
+
         self.tx
             .send(Message::Request { shard, tx })
             .expect("receiver dropped after sender");
