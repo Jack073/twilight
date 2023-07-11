@@ -31,7 +31,7 @@ struct Settings {
     /// Remaining daily permits.
     remaining: u16,
     /// Time until the daily permits reset.
-    reset_at: Instant,
+    reset_after: Duration,
     /// The number of permits to reset to.
     total: u16,
 }
@@ -44,16 +44,15 @@ async fn runner(
     Settings {
         mut max_concurrency,
         mut remaining,
-        reset_at,
+        reset_after,
         mut total,
     }: Settings,
 ) {
-    let reset_at = sleep_until(reset_at);
-    let interval = sleep_until(Instant::now());
-    tokio::pin! {
-        reset_at,
-        interval
+    let (interval, reset_at) = {
+        let now = Instant::now();
+        (sleep_until(now), sleep_until(now + reset_after))
     };
+    tokio::pin!(interval, reset_at);
     let create_queues = |max_concurrency: u8| {
         iter::repeat_with(VecDeque::new)
             .take(max_concurrency.into())
@@ -64,10 +63,8 @@ async fn runner(
     loop {
         tokio::select! {
             biased;
-            _ = &mut reset_at => {
+            _ = &mut reset_at, if remaining != total => {
                 remaining = total;
-                let previous = reset_at.deadline();
-                reset_at.as_mut().reset(previous + LIMIT_PERIOD);
             }
             message = rx.recv() => {
                 match message {
@@ -79,11 +76,11 @@ async fn runner(
                         }
                     }
                     Some(Message::Update(update)) => {
-                        let deadline;
+                        let reset_after;
                         Settings {
                             max_concurrency,
                             remaining,
-                            reset_at: deadline,
+                            reset_after,
                             total,
                         } = update;
 
@@ -95,7 +92,9 @@ async fn runner(
                                     .push_back((shard, tx));
                             }
                         }
-                        reset_at.as_mut().reset(deadline);
+                        if remaining != total {
+                            reset_at.as_mut().reset(Instant::now() + reset_after);
+                        }
                     }
                     None => break,
                 }
@@ -104,12 +103,13 @@ async fn runner(
                 let now = Instant::now();
                 let span = tracing::info_span!("bucket", capacity = %queues.len(), ?now);
                 interval.as_mut().reset(now + IDENTIFY_DELAY);
+                if remaining == total {
+                    reset_at.as_mut().reset(now + LIMIT_PERIOD);
+                }
                 for (rate_limit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
                         (&mut reset_at).await;
                         remaining = total;
-                        let previous = reset_at.deadline();
-                        reset_at.as_mut().reset(previous + LIMIT_PERIOD);
 
                         break;
                     }
@@ -143,8 +143,9 @@ async fn runner(
 ///
 /// # Settings
 ///
-/// `remaining` is reset to `total` after `reset_after` and then every
-/// [`LIMIT_PERIOD`].
+/// `remaining` resets to `total` after `reset_after` and then every
+/// [`LIMIT_PERIOD`] unless `remaining` != `total` in which case `reset_after`
+/// is ignored.
 ///
 /// A `max_concurrency` of `0` processes all requests instantly, effectively
 /// disabling the queue.
@@ -171,7 +172,7 @@ impl InMemoryQueue {
             Settings {
                 max_concurrency,
                 remaining,
-                reset_at: Instant::now() + reset_after,
+                reset_after,
                 total,
             },
         ));
@@ -229,7 +230,7 @@ impl InMemoryQueue {
             .send(Message::Update(Settings {
                 max_concurrency,
                 remaining,
-                reset_at: Instant::now() + reset_after,
+                reset_after,
                 total,
             }))
             .expect("receiver dropped after sender");
