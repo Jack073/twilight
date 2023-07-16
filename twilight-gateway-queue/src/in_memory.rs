@@ -192,7 +192,13 @@ impl InMemoryQueue {
     /// # let queue = InMemoryQueue::default();
     /// # let token = String::new();
     /// let client = Client::new(token);
-    /// let session = client.gateway().authed().await?.model().await?.session_start_limit;
+    /// let session = client
+    ///     .gateway()
+    ///     .authed()
+    ///     .await?
+    ///     .model()
+    ///     .await?
+    ///     .session_start_limit;
     /// queue.update(
     ///     session.max_concurrency,
     ///     session.remaining,
