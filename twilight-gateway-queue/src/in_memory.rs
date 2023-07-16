@@ -108,6 +108,8 @@ async fn runner(
                 }
                 for (ratelimit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
+                        let duration = reset_at.deadline().saturating_duration_since(now);
+                        tracing::debug!(?duration, "sleeping until remaining count refills");
                         (&mut reset_at).await;
                         remaining = total;
 
