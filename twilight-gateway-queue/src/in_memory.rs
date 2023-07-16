@@ -53,12 +53,9 @@ async fn runner(
         (sleep_until(now), sleep_until(now + reset_after))
     };
     tokio::pin!(interval, reset_at);
-    let create_queues = |max_concurrency: u8| {
-        iter::repeat_with(VecDeque::new)
-            .take(max_concurrency.into())
-            .collect::<Vec<_>>()
-    };
-    let mut queues = create_queues(max_concurrency);
+    let mut queues = iter::repeat_with(VecDeque::new)
+        .take(max_concurrency.into())
+        .collect::<Vec<_>>();
 
     loop {
         tokio::select! {
@@ -72,7 +69,8 @@ async fn runner(
                         if max_concurrency == 0 {
                             _ = tx.send(());
                         } else {
-                            queues[(shard % u32::from(max_concurrency)) as usize].push_back((shard, tx));
+                            queues[(shard % u32::from(max_concurrency)) as usize]
+                                .push_back((shard, tx));
                         }
                     }
                     Some(Message::Update(update)) => {
@@ -84,9 +82,11 @@ async fn runner(
                             total,
                         } = update;
 
-                        if queues.len() != max_concurrency as usize {
+                        if queues.len() != max_concurrency.into() {
                             let unbalanced = queues.into_iter().flatten();
-                            queues = create_queues(max_concurrency);
+                            queues = iter::repeat_with(VecDeque::new)
+                                .take(max_concurrency.into())
+                                .collect();
                             for (shard, tx) in unbalanced {
                                 queues[(shard % u32::from(max_concurrency)) as usize]
                                     .push_back((shard, tx));
