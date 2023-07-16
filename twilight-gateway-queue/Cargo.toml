@@ -14,7 +14,7 @@ version = "0.15.2"
 
 [dependencies]
 tokio = { default-features = false, features = ["macros", "rt", "sync", "time"], version = "1.15" }
-tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+tracing = { default-features = false, features = ["std"], version = "0.1" }
 
 [dev-dependencies]
 static_assertions = { default-features = false, version = "1" }

@@ -53,6 +53,7 @@ async fn runner(
         (sleep_until(now), sleep_until(now + reset_after))
     };
     tokio::pin!(interval, reset_at);
+
     let mut queues = iter::repeat_with(VecDeque::new)
         .take(max_concurrency.into())
         .collect::<Vec<_>>();
@@ -82,7 +83,11 @@ async fn runner(
                             total,
                         } = update;
 
-                        if queues.len() != max_concurrency.into() {
+                        if remaining != total {
+                            reset_at.as_mut().reset(Instant::now() + reset_after);
+                        }
+
+                        if max_concurrency as usize != queues.len() {
                             let unbalanced = queues.into_iter().flatten();
                             queues = iter::repeat_with(VecDeque::new)
                                 .take(max_concurrency.into())
@@ -92,9 +97,6 @@ async fn runner(
                                     .push_back((shard, tx));
                             }
                         }
-                        if remaining != total {
-                            reset_at.as_mut().reset(Instant::now() + reset_after);
-                        }
                     }
                     None => break,
                 }
@@ -103,9 +105,11 @@ async fn runner(
                 let span = tracing::info_span!("bucket", capacity = %queues.len());
                 let now = Instant::now();
                 interval.as_mut().reset(now + IDENTIFY_DELAY);
+
                 if remaining == total {
                     reset_at.as_mut().reset(now + LIMIT_PERIOD);
                 }
+
                 for (ratelimit_key, queue) in queues.iter_mut().enumerate() {
                     if remaining == 0 {
                         let duration = reset_at.deadline().saturating_duration_since(now);
@@ -115,6 +119,7 @@ async fn runner(
 
                         break;
                     }
+
                     while let Some((id, tx)) = queue.pop_front() {
                         let calculated_ratelimit_key = (id % u32::from(max_concurrency)) as usize;
                         debug_assert_eq!(ratelimit_key, calculated_ratelimit_key);
@@ -123,10 +128,10 @@ async fn runner(
                             continue;
                         }
                         tracing::debug!(parent: &span, ratelimit_key, "allowing shard {id}");
-                        // Give the shard a chance to identify before continuing.
-                        // Shards *must* identify in order.
-                        yield_now().await;
                         remaining -= 1;
+
+                        // Reschedule behind shard for ordering correctness.
+                        yield_now().await;
                         break;
                     }
                 }
