@@ -979,13 +979,14 @@ impl Shard {
         // May not send any additional WebSocket messages.
         self.heartbeat_interval = None;
         self.ratelimiter = None;
+        // Abort identify.
+        self.identify_rx = None;
         // Not resuming, drop session and resume URL.
         // https://discord.com/developers/docs/topics/gateway#initiating-a-disconnect
         if matches!(initiator, CloseInitiator::Shard(1000 | 1001)) {
             self.resume_gateway_url = None;
             self.session = None;
         }
-        // Avoid setting the status to FatallyClosed should it match for Shard initiated disconnect.
         self.status = match initiator {
             CloseInitiator::Gateway(close_code) => ConnectionStatus::from_close_code(close_code),
             _ => ConnectionStatus::Disconnected {
