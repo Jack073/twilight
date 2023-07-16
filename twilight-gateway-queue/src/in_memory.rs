@@ -117,10 +117,9 @@ async fn runner(
                         let calculated_ratelimit_key = (id % u32::from(max_concurrency)) as usize;
                         debug_assert_eq!(ratelimit_key, calculated_ratelimit_key);
 
-                        if tx.is_closed() {
+                        if tx.send(()).is_err() {
                             continue;
                         }
-                        _ = tx.send(());
                         tracing::debug!(parent: &span, ratelimit_key, "allowing shard {id}");
                         // Give the shard a chance to identify before continuing.
                         // Shards *must* identify in order.
