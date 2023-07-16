@@ -8,15 +8,20 @@ struct HttpQueue(Client<HttpConnector>);
 
 impl Queue for HttpQueue {
     fn enqueue(&self, id: u32) -> oneshot::Receiver<()> {
-        let (tx, rx) = oneshot::channel();
+        let (mut tx, rx) = oneshot::channel();
         let uri = format!("http://127.0.0.1:8000/?shard={id}");
         let req = self.0.get(uri.parse().unwrap());
 
         tokio::spawn(async move {
-            if let Err(source) = req.await {
-                tracing::info!("error sending request: {source}");
+            tokio::select! {
+                _ = tx.closed() => {}
+                res = req => {
+                    match res {
+                        Ok(_) => _ = tx.send(()),
+                        Err(source) => tracing::info!("error sending request: {source}"),
+                    }
+                }
             }
-            _ = tx.send(())
         });
 
         rx
