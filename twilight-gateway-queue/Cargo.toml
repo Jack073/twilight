@@ -19,3 +19,4 @@ tracing = { default-features = false, features = ["std", "attributes"], version 
 [dev-dependencies]
 static_assertions = { default-features = false, version = "1" }
 tokio = { default-features = false, features = ["test-util"], version = "1.0" }
+twilight-http = { default-features = false, path = "../twilight-http", version = "0.15.2" }

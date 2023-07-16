@@ -181,35 +181,26 @@ impl InMemoryQueue {
     ///
     /// ```no_run
     /// # use twilight_gateway_queue::InMemoryQueue;
-    /// # struct GetGatewayBot {
-    /// #     session_start_limit: SessionStartLimit,
-    /// # }
-    /// # struct SessionStartLimit {
-    /// #     max_concurrency: u8,
-    /// #     remaining: u16,
-    /// #     reset_after: u64,
-    /// #     total: u16,
-    /// # }
     /// # let rt = tokio::runtime::Builder::new_current_thread()
     /// #     .enable_time()
     /// #     .build()
     /// #     .unwrap();
     /// use std::time::Duration;
-    ///
-    /// async fn get_gateway_bot() -> GetGatewayBot {
-    ///     unimplemented!()
-    /// }
+    /// use twilight_http::Client;
     ///
     /// # rt.block_on(async {
     /// # let queue = InMemoryQueue::default();
-    /// let session = get_gateway_bot().await.session_start_limit;
+    /// # let token = String::new();
+    /// let client = Client::new(token);
+    /// let session = client.gateway().authed().await?.model().await?.session_start_limit;
     /// queue.update(
     ///     session.max_concurrency,
     ///     session.remaining,
     ///     Duration::from_millis(session.reset_after),
     ///     session.total,
     /// );
-    /// # })
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # });
     /// ```
     ///
     /// # Panics
