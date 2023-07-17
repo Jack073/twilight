@@ -60,7 +60,7 @@ pub struct Config {
     /// Gateway proxy URL.
     proxy_url: Option<Box<str>>,
     /// Queue in use by the shard.
-    queue: Arc<dyn Queue>,
+    queue: Arc<dyn Queue + Send + Sync>,
     /// Whether [outgoing message] ratelimiting is enabled.
     ///
     /// [outgoing message]: crate::Shard::send
@@ -136,7 +136,7 @@ impl Config {
     }
 
     /// Immutable reference to the queue in use by the shard.
-    pub fn queue(&self) -> &Arc<dyn Queue> {
+    pub fn queue(&self) -> &Arc<dyn Queue + Send + Sync> {
         &self.queue
     }
 
@@ -355,7 +355,7 @@ impl ConfigBuilder {
     ///
     /// Note that [`InMemoryQueue`] with a `max_concurrency` of `0` effectively
     /// turns itself into a no-op.
-    pub fn queue(mut self, queue: Arc<dyn Queue>) -> Self {
+    pub fn queue(mut self, queue: Arc<dyn Queue + Send + Sync>) -> Self {
         self.inner.queue = queue;
 
         self

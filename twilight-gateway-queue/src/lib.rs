@@ -25,8 +25,8 @@ pub const LIMIT_PERIOD: Duration = Duration::from_secs(60 * 60 * 24);
 /// Abstraction for types processing gateway identify requests.
 ///
 /// For convenience in twilight-gateway, implementors must also implement
-/// [`Debug`], [`Send`], and [`Sync`].
-pub trait Queue: Debug + Send + Sync {
+/// [`Debug`].
+pub trait Queue: Debug {
     /// Enqueue a shard with this ID.
     ///
     /// Send `()` to signal the shard to proceed. Note that shards may have
@@ -51,6 +51,6 @@ mod tests {
     use static_assertions::{assert_impl_all, assert_obj_safe};
     use std::fmt::Debug;
 
-    assert_impl_all!(dyn Queue: Debug, Send, Sync);
+    assert_impl_all!(dyn Queue: Debug);
     assert_obj_safe!(Queue);
 }
