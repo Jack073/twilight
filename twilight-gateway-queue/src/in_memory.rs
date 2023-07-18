@@ -42,7 +42,7 @@ struct Settings {
 async fn runner(
     mut rx: mpsc::UnboundedReceiver<Message>,
     Settings {
-        mut max_concurrency,
+        max_concurrency,
         mut remaining,
         reset_after,
         mut total,
@@ -56,7 +56,7 @@ async fn runner(
 
     let mut queues = iter::repeat_with(VecDeque::new)
         .take(max_concurrency.into())
-        .collect::<Vec<_>>();
+        .collect::<Box<_>>();
 
     loop {
         tokio::select! {
@@ -67,15 +67,15 @@ async fn runner(
             message = rx.recv() => {
                 match message {
                     Some(Message::Request { shard, tx }) => {
-                        if max_concurrency == 0 {
+                        if queues.is_empty() {
                             _ = tx.send(());
                         } else {
-                            queues[(shard % u32::from(max_concurrency)) as usize]
+                            queues[shard as usize % queues.len()]
                                 .push_back((shard, tx));
                         }
                     }
                     Some(Message::Update(update)) => {
-                        let reset_after;
+                        let (max_concurrency, reset_after);
                         Settings {
                             max_concurrency,
                             remaining,
@@ -88,7 +88,7 @@ async fn runner(
                         }
 
                         if max_concurrency as usize != queues.len() {
-                            let unbalanced = queues.into_iter().flatten();
+                            let unbalanced = queues.into_vec().into_iter().flatten();
                             queues = iter::repeat_with(VecDeque::new)
                                 .take(max_concurrency.into())
                                 .collect();
