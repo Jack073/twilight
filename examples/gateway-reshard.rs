@@ -1,5 +1,10 @@
 use futures_util::StreamExt;
-use std::{env, time::Duration};
+use std::{
+    env,
+    future::{poll_fn, Future},
+    task::Poll,
+    time::Duration,
+};
 use tokio::time;
 use twilight_gateway::{
     stream::{self, ShardEventStream, ShardMessageStream},
@@ -70,9 +75,27 @@ async fn reshard(
 
     time::sleep(RESHARD_DURATION).await;
 
-    let mut shards = stream::create_recommended(client, config, config_callback)
-        .await?
-        .collect::<Vec<_>>();
+    let info = client.gateway().authed().await?.model().await?;
+
+    let mut shards =
+        stream::create_range(.., info.shards, config, config_callback).collect::<Vec<_>>();
+
+    let expected_duration = estimate_identifed(
+        info.shards,
+        info.session_start_limit.max_concurrency,
+        info.session_start_limit.remaining,
+        Duration::from_millis(info.session_start_limit.reset_after),
+        info.session_start_limit.total,
+    );
+    tokio::pin! {
+        let timeout = time::sleep(expected_duration);
+    }
+    // Register timer.
+    poll_fn(|cx| {
+        _ = timeout.as_mut().poll(cx);
+        Poll::Ready(())
+    })
+    .await;
 
     // Before swapping the old and new list of shards, try to identify them.
     // Don't try too hard, however, as large bots may never have all shards
@@ -80,23 +103,44 @@ async fn reshard(
     let mut identified = vec![false; shards.len()];
     let mut stream = ShardMessageStream::new(shards.iter_mut());
 
-    while identified.iter().map(|&i| i as usize).sum::<usize>() < (identified.len() * 3) / 4 {
-        match stream.next().await {
-            Some((_, Err(source))) => {
-                tracing::warn!(?source, "error receiving message");
+    loop {
+        tokio::select! {
+            _ = &mut timeout, if identified.iter().map(|&i| i as usize).sum::<usize>() < (identified.len() * 3) / 4 => {
+                drop(stream);
+                break;
+            }
+            Some(res) = stream.next() => {
+                match res {
+                    (_, Err(source)) => {
+                        tracing::warn!(?source, "error receiving message");
 
-                if source.is_fatal() {
-                    anyhow::bail!(source);
+                        if source.is_fatal() {
+                            anyhow::bail!(source);
+                        }
+                    }
+                    (shard, _) => {
+                        identified[shard.id().number() as usize] = shard.status().is_identified();
+                    }
                 }
             }
-            Some((shard, _)) => {
-                identified[shard.id().number() as usize] = shard.status().is_identified();
-            }
-            _ => {}
         }
     }
 
-    drop(stream);
-
     Ok(shards)
+}
+
+fn estimate_identifed(
+    shards: u64,
+    max_concurrency: u64,
+    remaining: u64,
+    reset_after: Duration,
+    total: u64,
+) -> Duration {
+    const DAY: Duration = Duration::from_secs(60 * 60 * 24);
+
+    let refills = shards / remaining;
+    let buckets = (shards as f32 / max_concurrency as f32).round() as u64;
+    reset_after * (refills > 0) as u32
+        + (1..refills).map(|_| DAY).sum::<Duration>()
+        + Duration::from_secs(5 * buckets % total as u64)
 }
