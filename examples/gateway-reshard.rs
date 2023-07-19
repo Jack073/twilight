@@ -104,8 +104,9 @@ async fn reshard(
     let mut stream = ShardMessageStream::new(shards.iter_mut());
 
     loop {
+        let identified_count = identified.iter().map(|&i| i as usize).sum::<usize>();
         tokio::select! {
-            _ = &mut timeout, if identified.iter().map(|&i| i as usize).sum::<usize>() < (identified.len() * 3) / 4 => {
+            _ = &mut timeout, if identified_count < (identified.len() * 3) / 4 => {
                 drop(stream);
                 break;
             }
