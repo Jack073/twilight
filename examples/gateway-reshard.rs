@@ -143,5 +143,5 @@ fn estimate_identifed(
     let buckets = (shards as f32 / max_concurrency as f32).round() as u64;
     reset_after * (refills > 0) as u32
         + (1..refills).map(|_| DAY).sum::<Duration>()
-        + Duration::from_secs(5 * buckets % total as u64)
+        + Duration::from_secs(5 * buckets % total)
 }
