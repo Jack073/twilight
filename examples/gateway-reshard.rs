@@ -77,10 +77,10 @@ async fn reshard(
     // Before swapping the old and new list of shards, try to identify them.
     // Don't try too hard, however, as large bots may never have all shards
     // identified at the same time.
-    let mut identified = vec![0; shards.len()];
+    let mut identified = vec![false; shards.len()];
     let mut stream = ShardMessageStream::new(shards.iter_mut());
 
-    while identified.iter().sum::<usize>() < (identified.len() * 3) / 4 {
+    while identified.iter().map(|&i| i as usize).sum::<usize>() < (identified.len() * 3) / 4 {
         match stream.next().await {
             Some((_, Err(source))) => {
                 tracing::warn!(?source, "error receiving message");
@@ -90,12 +90,13 @@ async fn reshard(
                 }
             }
             Some((shard, _)) => {
-                identified[shard.id().number() as usize] = shard.status().is_identified().into();
+                identified[shard.id().number() as usize] = shard.status().is_identified();
             }
             _ => {}
         }
     }
 
     drop(stream);
+
     Ok(shards)
 }
